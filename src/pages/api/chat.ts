@@ -86,14 +86,6 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  const apiBaseUrl = (
-    import.meta.env.DEV
-      ? 'http://localhost:4000'
-      : import.meta.env.NEST_AI_API_URL ||
-        process.env.NEST_AI_API_URL ||
-        'https://api.santiago-jv.tech'
-  ).replace(/\/$/, '');
-
   const hmacSecret =
     import.meta.env.INTERNAL_HMAC_SECRET ||
     process.env.INTERNAL_HMAC_SECRET ||
@@ -103,33 +95,44 @@ export const POST: APIRoute = async ({ request }) => {
   const timestamp = String(Date.now());
   const signature = signPayloadWithHmac(timestamp, forwardPayload, hmacSecret);
 
-  try {
-    const upstream = await fetch(`${apiBaseUrl}/v1/agent/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: import.meta.env.PROD ? 'https://ai.santiago-jv.tech' : 'http://localhost:4321',
-        'X-Client-IP': clientIp,
-        'X-Santiago-Timestamp': timestamp,
-        'X-Santiago-Signature': signature,
-      },
-      body: forwardPayload,
-      signal: AbortSignal.timeout(15_000),
-    });
+  const candidateUrls = import.meta.env.DEV
+    ? ['http://localhost:4000']
+    : [
+        (import.meta.env.NEST_AI_API_URL || process.env.NEST_AI_API_URL || 'https://api.santiago-jv.tech').replace(/\/$/, ''),
+        'https://api-santiago-jv.vercel.app',
+      ];
 
-    const data = await upstream.json();
-    return new Response(JSON.stringify(data), {
-      status: upstream.status,
-      headers: JSON_HEADERS,
-    });
-  } catch {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        code: 'UPSTREAM_UNAVAILABLE',
-        message: 'AI backend service is temporarily unavailable.',
-      }),
-      { status: 503, headers: JSON_HEADERS },
-    );
+  for (const baseUrl of candidateUrls) {
+    try {
+      const upstream = await fetch(`${baseUrl}/v1/agent/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: import.meta.env.PROD ? 'https://ai.santiago-jv.tech' : 'http://localhost:4321',
+          'X-Client-IP': clientIp,
+          'X-Santiago-Timestamp': timestamp,
+          'X-Santiago-Signature': signature,
+        },
+        body: forwardPayload,
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      const data = await upstream.json();
+      return new Response(JSON.stringify(data), {
+        status: upstream.status,
+        headers: JSON_HEADERS,
+      });
+    } catch {
+      // Try next candidate URL if primary domain DNS is not active yet
+    }
   }
+
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      code: 'UPSTREAM_UNAVAILABLE',
+      message: 'AI backend service is temporarily unavailable.',
+    }),
+    { status: 503, headers: JSON_HEADERS },
+  );
 };

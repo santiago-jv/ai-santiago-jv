@@ -42,8 +42,12 @@ export function isAllowedBrowserOrigin(
   allowedEnv = 'https://ai.santiago-jv.tech,https://www.santiago-jv.tech,https://ai-santiago-jv.vercel.app',
   isProd = process.env.NODE_ENV === 'production',
 ): boolean {
-  const allowedList = allowedEnv
-    .split(',')
+  const allowedList = [
+    ...allowedEnv.split(','),
+    'https://ai.santiago-jv.tech',
+    'https://www.santiago-jv.tech',
+    'https://ai-santiago-jv.vercel.app',
+  ]
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 

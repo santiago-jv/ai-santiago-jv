@@ -4,7 +4,6 @@ const chatStream = document.getElementById('chat-stream') as HTMLElement | null;
 const chatForm = document.getElementById('chat-form') as HTMLFormElement | null;
 const chatInput = document.getElementById('chat-input') as HTMLTextAreaElement | null;
 const sendBtn = document.getElementById('send-btn') as HTMLButtonElement | null;
-const pasteVacancyBtn = document.getElementById('paste-vacancy-btn') as HTMLButtonElement | null;
 const honeypotInput = document.getElementById('website-honeypot') as HTMLInputElement | null;
 
 function escapeHtml(raw: string): string {
@@ -63,7 +62,7 @@ function renderAssistantReply(
       (t) => `
       <span class="tool-pill">
         <span class="tool-pill-dot"></span>
-        <span>@AgentFunction('${escapeHtml(t.toolName)}')</span>
+        <span>${escapeHtml(t.toolName)}</span>
         <span class="tool-pill-ms">${Number(t.durationMs || 2)}ms</span>
       </span>
     `,
@@ -121,10 +120,6 @@ chatInput?.addEventListener('keydown', (e) => {
     e.preventDefault();
     void sendPrompt(chatInput.value);
   }
-});
-
-pasteVacancyBtn?.addEventListener('click', () => {
-  void sendPrompt(UI_CONFIG.sampleVacancyPrompt);
 });
 
 document.querySelectorAll('.chip-btn').forEach((btn) => {
