@@ -4,7 +4,7 @@ export interface PromptChip {
 }
 
 export const UI_CONFIG = {
-  heroTitle: 'Ask anything about my work.',
+  heroTitle: 'Ask anything about my work',
   heroSubtitle: 'Backend architecture, production integrations, or paste a role to evaluate fit.',
   welcomeBody:
     'Hi, I am Santiago’s AI assistant. Ask me in English or Spanish about his work at GoodRec and Bolsiyo, or paste a job description.',
