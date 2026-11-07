@@ -76,10 +76,19 @@ function renderAssistantReply(
   if (chatStream) chatStream.scrollTop = chatStream.scrollHeight;
 }
 
+interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const MAX_HISTORY_TURNS = 6;
+const conversationHistory: ConversationTurn[] = [];
+
 async function sendPrompt(promptText: string): Promise<void> {
   const trimmed = promptText.trim();
   if (!trimmed || !chatInput || !sendBtn) return;
 
+  const historySnapshot = conversationHistory.slice(-MAX_HISTORY_TURNS);
   appendUserMessage(trimmed);
   chatInput.value = '';
   sendBtn.disabled = true;
@@ -91,14 +100,26 @@ async function sendPrompt(promptText: string): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: trimmed,
+        history: historySnapshot,
         website: honeypotInput?.value || '',
       }),
     });
     const data = await response.json();
+    const replyText = data.ok ? data.reply : data.message || 'Service unavailable.';
     renderAssistantReply(thinkingRow, {
-      reply: data.ok ? data.reply : data.message || 'Service unavailable.',
+      reply: replyText,
       executedTools: data.executedTools || [],
     });
+
+    if (data.ok && typeof data.reply === 'string' && data.reply.trim()) {
+      conversationHistory.push(
+        { role: 'user', content: trimmed },
+        { role: 'assistant', content: data.reply.trim() },
+      );
+      if (conversationHistory.length > MAX_HISTORY_TURNS) {
+        conversationHistory.splice(0, conversationHistory.length - MAX_HISTORY_TURNS);
+      }
+    }
   } catch {
     renderAssistantReply(thinkingRow, {
       reply: 'Network error. Please try again or reach out at contact@santiago-jv.tech.',

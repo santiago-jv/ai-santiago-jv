@@ -46,7 +46,11 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  let body: { message?: string; website?: string };
+  let body: {
+    message?: string;
+    history?: Array<{ role?: string; content?: string }>;
+    website?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -86,12 +90,39 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
+  const sanitizedHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  if (Array.isArray(body.history)) {
+    for (const turn of body.history.slice(-6)) {
+      if (!turn || typeof turn !== 'object') continue;
+      if (
+        (turn.role === 'user' || turn.role === 'assistant') &&
+        typeof turn.content === 'string'
+      ) {
+        const cleanedTurn = turn.content.trim().slice(0, 600);
+        if (!cleanedTurn) continue;
+        if (detectPromptInjectionAtEdge(cleanedTurn)) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              code: 'PROMPT_INJECTION_DETECTED',
+              message: 'Request blocked by the Prompt Injection security guardrail.',
+            }),
+            { status: 400, headers: JSON_HEADERS },
+          );
+        }
+        sanitizedHistory.push({ role: turn.role, content: cleanedTurn });
+      }
+    }
+  }
+
   const hmacSecret =
     import.meta.env.INTERNAL_HMAC_SECRET ||
     process.env.INTERNAL_HMAC_SECRET ||
     'dev-hmac-secret-santiago-jv';
 
-  const forwardPayload = JSON.stringify({ message });
+  const forwardPayload = JSON.stringify(
+    sanitizedHistory.length > 0 ? { message, history: sanitizedHistory } : { message },
+  );
   const timestamp = String(Date.now());
   const signature = signPayloadWithHmac(timestamp, forwardPayload, hmacSecret);
 
