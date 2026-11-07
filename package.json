@@ -1,0 +1,24 @@
+{
+  "name": "ai-santiago-jv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive Web AI Agent Console (ai.santiago-jv.tech) powered by @nestjs/ai (api.santiago-jv.tech) for recruiters and engineering leaders.",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^8.0.4",
+    "astro": "^5.1.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

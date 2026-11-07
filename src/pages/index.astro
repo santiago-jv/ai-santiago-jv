@@ -1,0 +1,115 @@
+---
+import { UI_CONFIG } from '../data/ui-copy';
+import '../styles/console.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Santiago Olayo — Live @nestjs/ai Agent Console (ai.santiago-jv.tech)</title>
+    <meta
+      name="description"
+      content="Interactive @nestjs/ai agent for recruiters and engineering leaders. Query Santiago Olayo’s production experience or evaluate job vacancy fit in real time."
+    />
+    <link rel="canonical" href="https://ai.santiago-jv.tech/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a href="https://www.santiago-jv.tech" class="brand">
+          <span class="brand-mark">S</span>
+          <span>ai.santiago-jv.tech</span>
+        </a>
+
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span>{UI_CONFIG.statusBadge}</span>
+        </div>
+
+        <div class="nav-actions">
+          <a href="https://www.santiago-jv.tech" class="nav-link">Portfolio</a>
+          <a href="https://mcp.santiago-jv.tech/docs" class="nav-link">MCP Server Docs</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero-header">
+        <p class="eyebrow">{UI_CONFIG.heroEyebrow}</p>
+        <h1 class="hero-title">{UI_CONFIG.heroTitle}</h1>
+        <p class="hero-subtitle">{UI_CONFIG.heroSubtitle}</p>
+      </section>
+
+      <section class="console-window" aria-label="Interactive AI Agent Chat">
+        <div class="window-bar">
+          <div class="traffic-lights" aria-hidden="true">
+            <span class="light red"></span>
+            <span class="light yellow"></span>
+            <span class="light green"></span>
+          </div>
+          <span class="window-title">POST https://api.santiago-jv.tech/v1/agent/chat</span>
+          <button type="button" class="vacancy-quick-btn" id="paste-vacancy-btn">
+            Score a Vacancy
+          </button>
+        </div>
+
+        <div class="chat-stream" id="chat-stream" role="log" aria-live="polite">
+          <div class="msg-row assistant">
+            <div class="tool-badges-bar">
+              <span class="tool-pill">
+                <span class="tool-pill-dot"></span>
+                <span>Ready · @AgentFunction() tools active</span>
+              </span>
+            </div>
+            <div class="bubble">
+              <p><strong>{UI_CONFIG.welcomeGreeting}</strong></p>
+              <p>{UI_CONFIG.welcomeBody}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chips-section">
+          <p class="chips-heading">Suggested Prompts (English & Español)</p>
+          <div class="chips-grid" id="chips-grid">
+            {
+              UI_CONFIG.chips.map((chip) => (
+                <button type="button" class="chip-btn" data-prompt={chip.prompt}>
+                  <span class="chip-badge">{chip.badge}</span>
+                  <span class="chip-label">{chip.label}</span>
+                </button>
+              ))
+            }
+          </div>
+        </div>
+
+        <form class="composer" id="chat-form">
+          <input
+            type="text"
+            name="website"
+            id="website-honeypot"
+            class="honeypot-field"
+            tabindex="-1"
+            autocomplete="off"
+          />
+          <textarea
+            id="chat-input"
+            class="composer-textarea"
+            rows="1"
+            maxlength="2200"
+            placeholder={UI_CONFIG.inputPlaceholder}
+            required></textarea>
+          <button type="submit" class="send-btn" id="send-btn">Send</button>
+        </form>
+      </section>
+
+      <p class="security-footer">{UI_CONFIG.securityFooter}</p>
+    </main>
+
+    <script>
+      import '../scripts/chat-client';
+    </script>
+  </body>
+</html>
