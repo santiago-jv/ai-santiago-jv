@@ -87,9 +87,11 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const apiBaseUrl = (
-    import.meta.env.NEST_AI_API_URL ||
-    process.env.NEST_AI_API_URL ||
-    (import.meta.env.PROD ? 'https://api.santiago-jv.tech' : 'http://localhost:4000')
+    import.meta.env.DEV
+      ? 'http://localhost:4000'
+      : import.meta.env.NEST_AI_API_URL ||
+        process.env.NEST_AI_API_URL ||
+        'https://api.santiago-jv.tech'
   ).replace(/\/$/, '');
 
   const hmacSecret =

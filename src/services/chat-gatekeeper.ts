@@ -39,7 +39,7 @@ export function signPayloadWithHmac(timestamp: string, rawBody: string, secret: 
 export function isAllowedBrowserOrigin(
   originHeader: string | null,
   refererHeader: string | null,
-  allowedEnv = 'https://ai.santiago-jv.tech,https://www.santiago-jv.tech',
+  allowedEnv = 'https://ai.santiago-jv.tech,https://www.santiago-jv.tech,https://ai-santiago-jv.vercel.app',
   isProd = process.env.NODE_ENV === 'production',
 ): boolean {
   const allowedList = allowedEnv
