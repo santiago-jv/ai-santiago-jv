@@ -105,7 +105,10 @@ async function sendPrompt(promptText: string): Promise<void> {
       }),
     });
     const data = await response.json();
-    const replyText = data.ok ? data.reply : data.message || 'Service unavailable.';
+    const replyText =
+      data.ok && typeof data.reply === 'string' && data.reply.trim()
+        ? data.reply.trim()
+        : data.message || 'Temporary timeout. Please try again in a few seconds.';
     renderAssistantReply(thinkingRow, {
       reply: replyText,
       executedTools: data.executedTools || [],
