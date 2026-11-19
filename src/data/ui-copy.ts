@@ -12,9 +12,9 @@ export const UI_CONFIG = {
   thinkingLabel: 'Thinking...',
   chips: [
     {
-      label: 'Stripe & Nequi payments',
+      label: 'Stripe, Nequi & Transfiya',
       prompt:
-        'What production experience does Santiago have integrating Stripe, Nequi, and Refácil and preventing duplicate charges?',
+        'What production experience does Santiago have integrating Stripe (GoodRec) and Transfiya & Nequi APIs (Bolsiyo), and preventing duplicate charges?',
     },
     {
       label: 'Hexagonal Architecture & Redis',
