@@ -2,15 +2,40 @@ import type { APIRoute } from 'astro';
 import {
   checkEdgeRateLimit,
   detectPromptInjectionAtEdge,
+  extractTrustedClientIp,
   isAllowedBrowserOrigin,
-  signPayloadWithHmac,
+  signPayloadWithHmacV2,
+  verifyCloudflareOriginToken,
 } from '../../services/chat-gatekeeper';
 
 export const prerender = false;
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const JSON_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Cache-Control': 'no-store',
+};
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
+  const isProd = import.meta.env.PROD;
+  const cfOriginSecret = (
+    import.meta.env.CF_ORIGIN_SECRET ||
+    process.env.CF_ORIGIN_SECRET ||
+    ''
+  ).trim();
+  const cfTokenHeader = request.headers.get('x-santiago-origin-token');
+  const cfOriginVerified = verifyCloudflareOriginToken(cfTokenHeader, cfOriginSecret);
+
+  if (isProd && cfOriginSecret && !cfOriginVerified) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        code: 'FORBIDDEN_DIRECT_ORIGIN',
+        message: 'Direct origin access is forbidden. Use https://ai.santiago-jv.tech.',
+      }),
+      { status: 403, headers: JSON_HEADERS },
+    );
+  }
+
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
   const allowedOrigins =
@@ -18,17 +43,21 @@ export const POST: APIRoute = async ({ request }) => {
     process.env.ALLOWED_BROWSER_ORIGINS ||
     'https://ai.santiago-jv.tech,https://www.santiago-jv.tech';
 
-  if (!isAllowedBrowserOrigin(origin, referer, allowedOrigins, import.meta.env.PROD)) {
+  if (!isAllowedBrowserOrigin(origin, referer, allowedOrigins, isProd)) {
     return new Response(
       JSON.stringify({ ok: false, code: 'FORBIDDEN_ORIGIN', message: 'Forbidden origin.' }),
       { status: 403, headers: JSON_HEADERS },
     );
   }
 
-  const clientIp =
-    request.headers.get('cf-connecting-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    '127.0.0.1';
+  let resolvedClientAddress: string | undefined;
+  try {
+    resolvedClientAddress = clientAddress;
+  } catch {
+    resolvedClientAddress = undefined;
+  }
+
+  const clientIp = extractTrustedClientIp(request, cfOriginVerified, resolvedClientAddress);
 
   const rateLimit = checkEdgeRateLimit(clientIp);
   if (!rateLimit.allowed) {
@@ -52,7 +81,11 @@ export const POST: APIRoute = async ({ request }) => {
     website?: string;
   };
   try {
-    body = await request.json();
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Invalid body');
+    }
+    body = parsed;
   } catch {
     return new Response(
       JSON.stringify({ ok: false, code: 'INVALID_JSON', message: 'Invalid JSON payload.' }),
@@ -67,7 +100,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  const message = (body.message || '').trim();
+  const message = (typeof body.message === 'string' ? body.message : '').trim();
   if (message.length < 2 || message.length > 2200) {
     return new Response(
       JSON.stringify({
@@ -115,55 +148,84 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  const hmacSecret =
+  const configuredHmacSecret = (
     import.meta.env.INTERNAL_HMAC_SECRET ||
     process.env.INTERNAL_HMAC_SECRET ||
-    'dev-hmac-secret-santiago-jv';
+    ''
+  ).trim();
 
+  if (!configuredHmacSecret && isProd) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        code: 'UPSTREAM_UNCONFIGURED',
+        message: 'AI backend service is temporarily unavailable.',
+      }),
+      { status: 503, headers: JSON_HEADERS },
+    );
+  }
+
+  const hmacSecret = configuredHmacSecret || 'local-dev-only-hmac';
   const forwardPayload = JSON.stringify(
     sanitizedHistory.length > 0 ? { message, history: sanitizedHistory } : { message },
   );
   const timestamp = String(Date.now());
-  const signature = signPayloadWithHmac(timestamp, forwardPayload, hmacSecret);
+  const signature = signPayloadWithHmacV2(timestamp, clientIp, forwardPayload, hmacSecret);
 
-  const candidateUrls = import.meta.env.DEV
-    ? ['http://localhost:4000']
-    : [
-        (import.meta.env.NEST_AI_API_URL || process.env.NEST_AI_API_URL || 'https://api.santiago-jv.tech').replace(/\/$/, ''),
-        'https://api-santiago-jv.vercel.app',
-      ];
+  const baseUrl = import.meta.env.DEV
+    ? 'http://localhost:4000'
+    : (
+        import.meta.env.NEST_AI_API_URL ||
+        process.env.NEST_AI_API_URL ||
+        'https://api.santiago-jv.tech'
+      ).replace(/\/$/, '');
 
-  for (const baseUrl of candidateUrls) {
-    try {
-      const upstream = await fetch(`${baseUrl}/v1/agent/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: import.meta.env.PROD ? 'https://ai.santiago-jv.tech' : 'http://localhost:4321',
-          'X-Client-IP': clientIp,
-          'X-Santiago-Timestamp': timestamp,
-          'X-Santiago-Signature': signature,
-        },
-        body: forwardPayload,
-        signal: AbortSignal.timeout(15_000),
-      });
+  try {
+    const upstreamHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'ai-santiago-jv-gatekeeper/1.0 (+https://ai.santiago-jv.tech)',
+      Origin: isProd ? 'https://ai.santiago-jv.tech' : 'http://localhost:4321',
+      'X-Client-IP': clientIp,
+      'X-Santiago-Sig-Version': '2',
+      'X-Santiago-Timestamp': timestamp,
+      'X-Santiago-Signature': signature,
+    };
 
-      const data = await upstream.json();
-      return new Response(JSON.stringify(data), {
-        status: upstream.status,
-        headers: JSON_HEADERS,
-      });
-    } catch {
-      // Try next candidate URL if primary domain DNS is not active yet
+    if (cfOriginSecret) {
+      upstreamHeaders['X-Santiago-Origin-Token'] = cfOriginSecret;
     }
-  }
 
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      code: 'UPSTREAM_UNAVAILABLE',
-      message: 'AI backend service is temporarily unavailable.',
-    }),
-    { status: 503, headers: JSON_HEADERS },
-  );
+    const upstream = await fetch(`${baseUrl}/v1/agent/chat`, {
+      method: 'POST',
+      headers: upstreamHeaders,
+      body: forwardPayload,
+      signal: AbortSignal.timeout(25_000),
+    });
+
+    const data = await upstream.json().catch(() => null);
+    if (!data || typeof data !== 'object') {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'UPSTREAM_INVALID_RESPONSE',
+          message: 'AI backend service returned an invalid response.',
+        }),
+        { status: 502, headers: JSON_HEADERS },
+      );
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: upstream.status,
+      headers: JSON_HEADERS,
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        code: 'UPSTREAM_UNAVAILABLE',
+        message: 'AI backend service is temporarily unavailable.',
+      }),
+      { status: 503, headers: JSON_HEADERS },
+    );
+  }
 };

@@ -11,17 +11,27 @@ function escapeHtml(raw: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatMarkdownLite(raw: string): string {
-  return escapeHtml(raw)
-    .replace(
-      /\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-    )
+  const linkPlaceholders: string[] = [];
+  const escaped = escapeHtml(raw).replace(
+    /\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g,
+    (_, label: string, href: string) => {
+      const idx = linkPlaceholders.length;
+      linkPlaceholders.push(`<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+      return `__LINK_TOKEN_${idx}__`;
+    },
+  );
+
+  const formatted = escaped
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/__LINK_TOKEN_(\d+)__/g, (_, i: string) => linkPlaceholders[Number(i)] || '');
+
+  return formatted
     .split(/\n\n+/)
     .map((para) => `<p>${para.replace(/\n/g, '<br/>')}</p>`)
     .join('');
@@ -83,15 +93,25 @@ interface ConversationTurn {
 
 const MAX_HISTORY_TURNS = 6;
 const conversationHistory: ConversationTurn[] = [];
+const chipButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.chip-btn'));
+let isSending = false;
+
+function setComposerDisabled(disabled: boolean): void {
+  if (sendBtn) sendBtn.disabled = disabled;
+  chipButtons.forEach((btn) => {
+    btn.disabled = disabled;
+  });
+}
 
 async function sendPrompt(promptText: string): Promise<void> {
   const trimmed = promptText.trim();
-  if (!trimmed || !chatInput || !sendBtn) return;
+  if (isSending || !trimmed || !chatInput || !sendBtn) return;
 
+  isSending = true;
   const historySnapshot = conversationHistory.slice(-MAX_HISTORY_TURNS);
   appendUserMessage(trimmed);
   chatInput.value = '';
-  sendBtn.disabled = true;
+  setComposerDisabled(true);
   const thinkingRow = appendThinkingRow();
 
   try {
@@ -129,7 +149,8 @@ async function sendPrompt(promptText: string): Promise<void> {
       executedTools: [],
     });
   } finally {
-    sendBtn.disabled = false;
+    isSending = false;
+    setComposerDisabled(false);
     chatInput.focus();
   }
 }
@@ -146,7 +167,7 @@ chatInput?.addEventListener('keydown', (e) => {
   }
 });
 
-document.querySelectorAll('.chip-btn').forEach((btn) => {
+chipButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
     const prompt = btn.getAttribute('data-prompt');
     if (prompt) void sendPrompt(prompt);
