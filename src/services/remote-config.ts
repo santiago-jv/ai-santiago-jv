@@ -100,7 +100,17 @@ export async function fetchRemoteSiteConfig(): Promise<RemotePublicSiteConfig> {
       signal: controller.signal,
     });
     if (!response.ok) return cachedConfig || DEFAULT_CONFIG;
-    const data = (await response.json()) as RemotePublicSiteConfig;
+    const raw = (await response.json()) as RemotePublicSiteConfig & {
+      config?: RemotePublicSiteConfig;
+    };
+    const data: RemotePublicSiteConfig = raw?.config
+      ? {
+          ...raw.config,
+          version: raw.config.version || '1.0',
+          updatedAt: raw.updatedAt || raw.config.updatedAt || new Date().toISOString(),
+          source: raw.source || raw.config.source || 'neon-postgres',
+        }
+      : raw;
     if (data && data.domains?.portfolioUrl && data.social?.contactEmail) {
       cachedConfig = data;
       cachedAtMs = now;
