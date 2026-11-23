@@ -7,6 +7,7 @@ import {
   signPayloadWithHmacV2,
   verifyCloudflareOriginToken,
 } from '../../services/chat-gatekeeper';
+import { fetchRemoteSiteConfig } from '../../services/remote-config';
 
 export const prerender = false;
 
@@ -38,10 +39,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
-  const allowedOrigins =
+  const remoteConfig = isProd ? await fetchRemoteSiteConfig() : null;
+  const staticAllowedOrigins =
     import.meta.env.ALLOWED_BROWSER_ORIGINS ||
     process.env.ALLOWED_BROWSER_ORIGINS ||
     'https://ai.santiago-jv.tech,https://www.santiago-jv.tech';
+  const allowedOrigins = [
+    staticAllowedOrigins,
+    remoteConfig?.domains.allowedOrigins?.join(','),
+  ]
+    .filter(Boolean)
+    .join(',');
 
   if (!isAllowedBrowserOrigin(origin, referer, allowedOrigins, isProd)) {
     return new Response(

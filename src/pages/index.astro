@@ -1,6 +1,12 @@
 ---
 import { UI_CONFIG } from '../data/ui-copy';
+import { fetchRemoteSiteConfig } from '../services/remote-config';
 import '../styles/console.css';
+
+const remoteConfig = await fetchRemoteSiteConfig();
+const portfolioUrl = remoteConfig.domains.portfolioUrl;
+const mcpDocsUrl = remoteConfig.domains.mcpDocsUrl;
+const canonicalUrl = `${remoteConfig.domains.aiConsoleUrl.replace(/\/+$/, '')}/`;
 ---
 
 <!doctype html>
@@ -13,21 +19,21 @@ import '../styles/console.css';
       name="description"
       content="Interactive AI assistant for Santiago Olayo Villamil. Explore production backend architecture, integrations, or evaluate job vacancy fit."
     />
-    <link rel="canonical" href="https://ai.santiago-jv.tech/" />
+    <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
     <header class="header">
       <div class="header-inner">
-        <a href="https://www.santiago-jv.tech" class="brand-link" aria-label="Santiago Olayo">
+        <a href={portfolioUrl} class="brand-link" aria-label="Santiago Olayo">
           <img src="/favicon.svg" alt="" width="26" height="26" class="brand-mark" />
           <span class="wordmark">Santiago Olayo</span>
           <span class="brand-tag">AI</span>
         </a>
 
         <nav class="nav-links" aria-label="Primary navigation">
-          <a href="https://mcp.santiago-jv.tech/docs" class="nav-link">MCP Docs</a>
-          <a href="https://www.santiago-jv.tech" class="nav-cta">Portfolio</a>
+          <a href={mcpDocsUrl} class="nav-link">MCP Docs</a>
+          <a href={portfolioUrl} class="nav-cta">Portfolio</a>
         </nav>
       </div>
     </header>
