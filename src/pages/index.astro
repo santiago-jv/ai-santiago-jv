@@ -14,6 +14,8 @@ const canonicalUrl = `${remoteConfig.domains.aiConsoleUrl.replace(/\/+$/, '')}/`
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Santiago Olayo | AI Assistant</title>
     <meta
       name="description"
@@ -26,7 +28,16 @@ const canonicalUrl = `${remoteConfig.domains.aiConsoleUrl.replace(/\/+$/, '')}/`
     <header class="header">
       <div class="header-inner">
         <a href={portfolioUrl} class="brand-link" aria-label="Santiago Olayo">
-          <img src="/favicon.svg" alt="" width="26" height="26" class="brand-mark" />
+          <img
+            src="/favicon.svg"
+            alt=""
+            width="26"
+            height="26"
+            fetchpriority="high"
+            decoding="sync"
+            aria-hidden="true"
+            class="brand-mark"
+          />
           <span class="wordmark">Santiago Olayo</span>
           <span class="brand-tag">AI</span>
         </a>
@@ -57,7 +68,7 @@ const canonicalUrl = `${remoteConfig.domains.aiConsoleUrl.replace(/\/+$/, '')}/`
           </span>
         </div>
 
-        <div class="chat-stream" id="chat-stream" role="log" aria-live="polite">
+        <div class="chat-stream" id="chat-stream" role="log" aria-live="polite" aria-atomic="false">
           <div class="msg-row assistant">
             <div class="bubble">
               <p>{UI_CONFIG.welcomeBody}</p>
@@ -76,19 +87,26 @@ const canonicalUrl = `${remoteConfig.domains.aiConsoleUrl.replace(/\/+$/, '')}/`
         </div>
 
         <form class="composer" id="chat-form">
-          <input
-            type="text"
-            name="website"
-            id="website-honeypot"
-            class="honeypot-field"
-            tabindex="-1"
-            autocomplete="off"
-          />
+          <div class="honeypot-field" aria-hidden="true">
+            <label for="website-honeypot">Website</label>
+            <input
+              type="text"
+              name="website"
+              id="website-honeypot"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </div>
+          <label for="chat-input" class="sr-only">
+            Ask a question about Santiago's engineering experience or paste a job description
+          </label>
           <textarea
             id="chat-input"
+            name="message"
             class="composer-textarea"
             rows="1"
             maxlength="2200"
+            enterkeyhint="send"
             placeholder={UI_CONFIG.inputPlaceholder}
             required></textarea>
           <button type="submit" class="send-btn" id="send-btn">Send</button>

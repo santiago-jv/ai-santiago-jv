@@ -108,6 +108,7 @@ async function sendPrompt(promptText: string): Promise<void> {
   if (isSending || !trimmed || !chatInput || !sendBtn) return;
 
   isSending = true;
+  if (chatStream) chatStream.setAttribute('aria-busy', 'true');
   const historySnapshot = conversationHistory.slice(-MAX_HISTORY_TURNS);
   appendUserMessage(trimmed);
   chatInput.value = '';
@@ -150,6 +151,7 @@ async function sendPrompt(promptText: string): Promise<void> {
     });
   } finally {
     isSending = false;
+    if (chatStream) chatStream.setAttribute('aria-busy', 'false');
     setComposerDisabled(false);
     chatInput.focus();
   }

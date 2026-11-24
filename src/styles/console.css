@@ -25,15 +25,39 @@
   color: #1d1d1f;
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--apple-bg-white);
   color: var(--apple-text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.16);
 }
 
 /* Header matching santiago-jv.tech */
@@ -348,6 +372,12 @@ body {
   background: var(--apple-bg-white);
 }
 
+.composer-textarea:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.16);
+}
+
 .send-btn {
   background: var(--apple-accent);
   color: #ffffff;
@@ -383,5 +413,19 @@ body {
   }
   .container {
     padding: 28px 16px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-btn,
+  .send-btn,
+  .nav-link,
+  .nav-cta,
+  .composer-textarea {
+    transition: none !important;
+  }
+
+  .chip-btn:hover {
+    transform: none;
   }
 }
