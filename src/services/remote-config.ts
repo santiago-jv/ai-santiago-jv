@@ -90,14 +90,11 @@ export async function fetchRemoteSiteConfig(): Promise<RemotePublicSiteConfig> {
     .trim()
     .replace(/\/+$/, '');
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1800);
-
   try {
     const response = await fetch(`${baseUrl}/v1/config/public`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(1800),
     });
     if (!response.ok) return cachedConfig || DEFAULT_CONFIG;
     const raw = (await response.json()) as RemotePublicSiteConfig & {
@@ -119,7 +116,5 @@ export async function fetchRemoteSiteConfig(): Promise<RemotePublicSiteConfig> {
     return cachedConfig || DEFAULT_CONFIG;
   } catch {
     return cachedConfig || DEFAULT_CONFIG;
-  } finally {
-    clearTimeout(timeout);
   }
 }

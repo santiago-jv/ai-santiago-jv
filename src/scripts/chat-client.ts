@@ -165,7 +165,14 @@ chatForm?.addEventListener('submit', (e) => {
 chatInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    void sendPrompt(chatInput.value);
+    if (e.isComposing || e.keyCode === 229) {
+      return;
+    }
+    if (chatForm) {
+      chatForm.requestSubmit();
+    } else {
+      void sendPrompt(chatInput.value);
+    }
   }
 });
 
